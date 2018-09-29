@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <group >
+        <item
+            android:title="保存汇率"
+            android:id="@+id/inGroup01"
+            />
+        <item
+            android:title="组内选项二"
+            android:id="@+id/inGroup02"
+            />
+    </group>
+    <item
+        android:title="选项一"
+        android:id="@+id/select01"
+        />
+    <item
+        android:title="选项二"
+        android:id="@+id/select02"
+        />
+</menu>
