@@ -5,16 +5,27 @@ import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ExchangeRateActivity extends AppCompatActivity implements Runnable{
 
@@ -22,6 +33,90 @@ public class ExchangeRateActivity extends AppCompatActivity implements Runnable{
     private TextView ipt;
     private TextView opt;
     private TextView opt02;
+
+    // 初始化展示数据的容器
+    private List<Money> moneyList = new ArrayList<>();
+
+
+    public class Money {
+        private float excBuyPrice;
+
+        public float getExcBuyPrice() {
+            return excBuyPrice;
+        }
+
+        public void setExcBuyPrice(float excBuyPrice) {
+            this.excBuyPrice = excBuyPrice;
+        }
+
+        public float getCurBuyPrice() {
+            return curBuyPrice;
+        }
+
+        public void setCurBuyPrice(float curBuyPrice) {
+            this.curBuyPrice = curBuyPrice;
+        }
+
+        public float getExcSellPrice() {
+            return excSellPrice;
+        }
+
+        public void setExcSellPrice(float excSellPrice) {
+            this.excSellPrice = excSellPrice;
+        }
+
+        public float getCurSellPrice() {
+            return curSellPrice;
+        }
+
+        public void setCurSellPrice(float curSellPrice) {
+            this.curSellPrice = curSellPrice;
+        }
+
+        public float getInterPrice() {
+            return interPrice;
+        }
+
+        public void setInterPrice(float interPrice) {
+            this.interPrice = interPrice;
+        }
+
+        public float getConvertPrice() {
+            return convertPrice;
+        }
+
+        public void setConvertPrice(float convertPrice) {
+            this.convertPrice = convertPrice;
+        }
+
+        private String name;
+
+        public Money(float excBuyPrice, String name, float curBuyPrice, float excSellPrice, float curSellPrice, float interPrice, float convertPrice) {
+            this.excBuyPrice = excBuyPrice;
+            this.name = name;
+            this.curBuyPrice = curBuyPrice;
+            this.excSellPrice = excSellPrice;
+            this.curSellPrice = curSellPrice;
+            this.interPrice = interPrice;
+            this.convertPrice = convertPrice;
+        }
+
+        public String getName() {
+            return name;
+
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        private float curBuyPrice;
+        private float excSellPrice;
+        private float curSellPrice;
+        private float interPrice;
+        private float convertPrice;
+
+    }
 
     // 用于处理子线程的Handler,先预先定义下
     private static Handler handler;
@@ -40,10 +135,26 @@ public class ExchangeRateActivity extends AppCompatActivity implements Runnable{
             }
         }
 
+        try { //从一个URL加载一个Document对象。
+            Document doc = Jsoup.connect("http://www.usd-cny.com").get();
+            Elements elements = doc.select("#m > div > div:nth-child(3) > table:nth-child(1) > tbody > tr > td:nth-child(1) > div > a > b");
+            for (Element e: elements) {
+                Money money = new Money(12,e.text(), 12,13,14,15,16);
+                moneyList.add(money);
+            }
+            Log.i("mytag",elements.text());
+        }
+        catch(Exception e) {
+            Log.i("mytag", e.toString());
+        }
+
+
         // msg 对象用于返回主线程, 这里的网络方法有点像ajax的xmlhttprequest
         Message msg = handler.obtainMessage(5);
         msg.obj = "子线程run方法传值";
         handler.sendMessage(msg);
+
+//      getWebRes();
     }
 
     @Override
@@ -59,6 +170,7 @@ public class ExchangeRateActivity extends AppCompatActivity implements Runnable{
         Thread t = new Thread(this);
         t.start();
 
+        // handler就像是个线程监听器，它负责和线程进行交互，获取线程传来的信号和数据
         handler = new Handler(){
             @Override
             public void handleMessage(Message msg) {
@@ -67,11 +179,21 @@ public class ExchangeRateActivity extends AppCompatActivity implements Runnable{
                     String str = (String) msg.obj;
                     Log.i("主线程onCreate方法", "handleMessage方法: 获取到消息" + str);
                     opt02.setText(str);
-                    getWebRes();
+                    // 初始化RecycleList的数据
+                    // initMoney();
+                    RecyclerView recyclerView = findViewById(R.id.recycler_view);
+                    LinearLayout layout = findViewById(R.id.exchange_rate_layout);
+                    LinearLayoutManager layoutManager = new LinearLayoutManager(layout.getContext());
+                    recyclerView.setLayoutManager(layoutManager);
+                    MoneyAdapter adapter = new MoneyAdapter(moneyList);
+                    recyclerView.setAdapter(adapter);
                 }
                 super.handleMessage(msg);
             }
         };
+
+
+
     }
 
     public void calcRate(View view) {
@@ -88,11 +210,20 @@ public class ExchangeRateActivity extends AppCompatActivity implements Runnable{
         opt.setText((ipt.getText().toString()==null ? Float.parseFloat(ipt.getText().toString()): 0 ) * rate + "");
     }
 
+
+    // mock一下数据
+    private void initMoney() {
+        for (int i = 0; i < 10; i++) {
+            Money money = new Money(12,"某种钱", 12,13,14,15,16);
+            moneyList.add(money);
+        }
+    }
+
     // 在子线程种获取方法
     private void getWebRes() {
         URL url = null;
         try {
-            url = new URL("http://www.usd-cny.com/icbc.html");
+            url = new URL("http://www.usd-cny.com");
             HttpURLConnection http = (HttpURLConnection) url.openConnection();
             InputStream in = http.getInputStream();
             String html = inputString2String(in);
@@ -104,16 +235,24 @@ public class ExchangeRateActivity extends AppCompatActivity implements Runnable{
         }
     }
 
+    /**
+     * @param inputStream InputStream
+     * @return string
+     *
+     * */
     private String inputString2String (InputStream inputStream) throws IOException {
-        if (inputStream == null) {
-            return null;
+        final int bufferSize = 1024;
+        final char[] buffer  = new char[bufferSize];
+        final StringBuilder out = new StringBuilder();
+        Reader in = new InputStreamReader(inputStream, "gb2312");
+        for (;;) {
+            int rsz = in.read(buffer, 0, buffer.length);
+            if (rsz < 0) {
+                break;
+            }
+            out.append(buffer, 0, rsz);
         }
-        int i = -1;
-        byte[] b = new byte[1024];
-        StringBuffer sb = new StringBuffer();
-        while ((i = inputStream.read(b)) != -1) {
-            sb.append(new String(b, 0, i));		}
-        return sb.toString();
+        return out.toString();
     }
 
 
